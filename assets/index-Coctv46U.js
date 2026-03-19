@@ -62845,13 +62845,13 @@ const Une = () => {
                         K(!0),
                         Be("");
                         try {
-                            const response = await fetch("/api/create-pix", {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify(ze())
+                            const {data: ve, error: me} = await Fc.functions.invoke("create-pix", {
+                                body: ze()
                             });
-                            const ve = await response.json();
-                            if (ve.error) throw new Error(ve.error);
+                            if (me)
+                                throw new Error(me.message || "Erro ao criar cobrança PIX");
+                            if (ve != null && ve.error)
+                                throw new Error(ve.error);
                             ne(ve.pixCode);
                             ce(ve.transactionId);
                             ve.calculatedAmount && W((ve.calculatedAmount / 100).toFixed(2).replace(".", ","));
