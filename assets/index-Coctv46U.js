@@ -62847,7 +62847,7 @@ const Une = () => {
                         try {
                             const {data: ve, error: me} = await Fc.functions.invoke("create-pix", {
                                 body: ze()
-                                                    const response = await fetch("http://localhost:3000/create-pix", {
+                                                    const response = await fetch("/api/create-pix", {
                                                         method: "POST",
                                                         headers: { "Content-Type": "application/json" },
                                                         body: JSON.stringify(ze())
