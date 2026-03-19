@@ -62847,24 +62847,19 @@ const Une = () => {
                         try {
                             const {data: ve, error: me} = await Fc.functions.invoke("create-pix", {
                                 body: ze()
-                            });
-                            if (me)
-                                throw new Error(me.message || "Erro ao criar cobrança PIX");
-                            if (ve != null && ve.error)
-                                throw new Error(ve.error);
-                            ne(ve.pixCode),
-                            ce(ve.transactionId),
-                            ve.calculatedAmount && W((ve.calculatedAmount / 100).toFixed(2).replace(".", ",")),
-                            K(!1),
-                            de(!0),
-                            Ce("form")
-                        } catch (ve) {
-                            console.error("PIX creation error:", ve),
-                            Be(ve.message || "Erro ao gerar PIX. Tente novamente."),
-                            K(!1),
-                            Ce("form")
-                        }
-                    }
+                                                    const response = await fetch("http://localhost:3000/create-pix", {
+                                                        method: "POST",
+                                                        headers: { "Content-Type": "application/json" },
+                                                        body: JSON.stringify(ze())
+                                                    });
+                                                    const ve = await response.json();
+                                                    if (ve.error) throw new Error(ve.error);
+                                                    ne(ve.pixCode);
+                                                    ce(ve.transactionId);
+                                                    ve.calculatedAmount && W((ve.calculatedAmount / 100).toFixed(2).replace(".", ","));
+                                                    K(!1);
+                                                    de(!0);
+                                                    Ce("form");
                     ,
                     className: "w-full max-w-sm bg-primary text-primary-foreground font-bold py-4 rounded-xl text-sm hover:brightness-110 transition-all shadow-md flex items-center justify-center gap-2",
                     children: [p.jsx(PC, {
