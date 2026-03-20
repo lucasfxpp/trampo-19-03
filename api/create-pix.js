@@ -144,6 +144,21 @@ module.exports = async function (req, res) {
     try { console.log('freepay response status:', resp.status, 'body:', text); } catch (e) {}
     let json;
     try { json = JSON.parse(text); } catch (e) { json = { raw: text }; }
+
+    // Normalize Freepay response to include the fields frontend expects
+    try {
+      if (json && json.data) {
+        const d = json.data;
+        // transactionId expected by frontend
+        if (!d.transactionId && d.id) d.transactionId = d.id;
+        // calculatedAmount expected by frontend (in cents)
+        if (!d.calculatedAmount && (d.amount || d.total)) d.calculatedAmount = d.amount || d.total;
+        // pixCode expected by frontend
+        const pixObj = d.pix || d.payment || d.data || {};
+        if (!d.pixCode) d.pixCode = pixObj.qr_code || pixObj.qrcode || pixObj.code || pixObj.payload || null;
+      }
+    } catch (e) { console.warn('normalize response error', e && e.stack || e); }
+
     return res.status(resp.status || 200).json(json);
   } catch (err) {
     console.error('create-pix error', err && err.stack || err);
