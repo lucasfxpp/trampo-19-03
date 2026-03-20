@@ -62883,9 +62883,9 @@ const Une = () => {
                                 throw new Error(me.message || "Erro ao criar cobrança PIX");
                             if (ve != null && ve.error)
                                 throw new Error(ve.error);
-                            ne(ve.pixCode),
-                            ce(ve.transactionId),
-                            ve.calculatedAmount && W((ve.calculatedAmount / 100).toFixed(2).replace(".", ",")),
+                            ne((ve && (ve.pixCode || (ve.pix && (ve.pix.qr_code || ve.pix.qrcode)) || (ve.payment && ve.payment.pix && (ve.payment.pix.qr_code || ve.payment.pix.qrcode)) || ve.qr || ve.qrcode || ve.payload || (ve.data && ve.data.pix && (ve.data.pix.qr_code || ve.data.pix.qrcode)) )) || null),
+                            ce(ve.transactionId || ve.id),
+                            ((ve.calculatedAmount || ve.amount) && W(((ve.calculatedAmount || ve.amount) / 100).toFixed(2).replace(".", ","))),
                             K(!1),
                             de(!0),
                             Ce("form")
@@ -63047,9 +63047,9 @@ const Une = () => {
                                             throw new Error(me.message || "Erro ao criar cobrança PIX");
                                         if (ve != null && ve.error)
                                             throw new Error(ve.error);
-                                        ne(ve.pixCode),
-                                        ce(ve.transactionId),
-                                        ve.calculatedAmount && W((ve.calculatedAmount / 100).toFixed(2).replace(".", ",")),
+                                        ne((ve && (ve.pixCode || (ve.pix && (ve.pix.qr_code || ve.pix.qrcode)) || (ve.payment && ve.payment.pix && (ve.payment.pix.qr_code || ve.payment.pix.qrcode)) || ve.qr || ve.qrcode || ve.payload || (ve.data && ve.data.pix && (ve.data.pix.qr_code || ve.data.pix.qrcode)) )) || null),
+                                        ce(ve.transactionId || ve.id),
+                                        ((ve.calculatedAmount || ve.amount) && W(((ve.calculatedAmount || ve.amount) / 100).toFixed(2).replace(".", ","))),
                                         K(!1),
                                         de(!0),
                                         Ce("form")
