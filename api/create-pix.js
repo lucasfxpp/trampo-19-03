@@ -1,4 +1,4 @@
-export default async function handler(req, res) {
+module.exports = async function (req, res) {
   try {
     console.log('api/create-pix invoked', req.method);
     if (req.method === 'GET') return res.status(200).json({ ok: true });
@@ -49,7 +49,13 @@ export default async function handler(req, res) {
       metadata: metadata && typeof metadata === 'object' ? metadata : {}
     };
 
-    const resp = await fetch('https://api.freepaybrasil.com/v1/payment-transaction/create', {
+    const _fetch = (typeof fetch !== 'undefined') ? fetch : (global && global.fetch) ? global.fetch : null;
+    if (!_fetch) {
+      console.error('fetch is not available in this runtime');
+      return res.status(500).json({ error: 'fetch_not_available' });
+    }
+
+    const resp = await _fetch('https://api.freepaybrasil.com/v1/payment-transaction/create', {
       method: 'POST',
       headers: {
         'Authorization': `Basic ${auth}`,
