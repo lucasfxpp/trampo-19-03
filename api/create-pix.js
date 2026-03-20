@@ -12,14 +12,20 @@ module.exports = async function (req, res) {
     try { console.log('incoming create-pix body:', JSON.stringify(body)); } catch(e) {}
     const amount = body.amount;
 
-    // Normalize amount to integer cents
-    let amountCents = null;
-    if (typeof amount === 'number') amountCents = Number.isInteger(amount) ? amount : Math.round(amount * 100);
-    else if (typeof amount === 'string') {
-      const parsed = Number(amount.replace(',', '.'));
-      if (!Number.isNaN(parsed)) amountCents = Math.round(parsed * 100);
-    }
-    if (!amountCents || amountCents <= 0) return res.status(400).json({ error: 'invalid_amount' });
+    // helper to parse money-like values into integer cents
+    const parseMoneyToCents = v => {
+      if (v == null) return null;
+      if (typeof v === 'number') return Number.isInteger(v) ? v : Math.round(v * 100);
+      if (typeof v === 'string') {
+        const cleaned = v.replace(/[^0-9,\.]/g, '').replace(',', '.');
+        const parsed = Number(cleaned);
+        if (!Number.isNaN(parsed)) return Math.round(parsed * 100);
+      }
+      return null;
+    };
+
+    // Normalize amount to integer cents if provided directly
+    let amountCents = parseMoneyToCents(amount);
 
     const publicKey = process.env.FREEPAY_PUBLIC_KEY;
     const secretKey = process.env.FREEPAY_SECRET_KEY;
@@ -76,6 +82,23 @@ module.exports = async function (req, res) {
       fpPayload.amount = sum;
     } else {
       // fallback to provided amount (already normalized to cents)
+      // try alternate keys if amount wasn't provided directly
+      if (!amountCents) {
+        const altKeys = ['total','price','preco','valor','value','ida_total','volta_total','calculatedAmount','total_out','total_in'];
+        for (const k of altKeys) {
+          if (body[k] != null) {
+            amountCents = parseMoneyToCents(body[k]);
+            if (amountCents) break;
+          }
+        }
+      }
+
+      // also check singular item fields
+      if (!amountCents && body.item) {
+        const it = body.item;
+        amountCents = parseMoneyToCents(it.price || it.preco || it.unit_price || it.valor || it.total);
+      }
+
       fpPayload.amount = amountCents;
     }
 
@@ -87,6 +110,9 @@ module.exports = async function (req, res) {
       console.error('fetch not available');
       return res.status(500).json({ error: 'fetch_not_available' });
     }
+
+    // final validation for amount
+    if (!fpPayload.amount || Number(fpPayload.amount) <= 0) return res.status(400).json({ error: 'invalid_amount' });
 
     try { console.log('fpPayload to send:', JSON.stringify(fpPayload)); } catch(e) {}
 
