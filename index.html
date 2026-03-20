@@ -128,9 +128,11 @@
 									// fallback to largest detected amount
 									if(!chosen) chosen = Math.max.apply(null, amounts);
 								}
-								// override if we found a sensible candidate: either no amount sent, or sent amount is much smaller than displayed
+								// debug
+								console.log('[create-pix] detected amounts on page (cents):', amounts, 'chosen:', chosen, 'current sent amount:', enhanced.amount);
+								// force override when we have a clear DOM candidate different from sent value
 								if(chosen){
-									if(!enhanced.amount || Number(enhanced.amount) < Math.round(chosen * 0.6)){
+									if(!enhanced.amount || Math.abs(Number(enhanced.amount) - chosen) > 1){
 										enhanced.amount = chosen;
 										console.log('[create-pix] overridden amount ->', enhanced.amount);
 									}
