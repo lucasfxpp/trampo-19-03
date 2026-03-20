@@ -62849,32 +62849,34 @@ const Une = () => {
                                 body: (function(){
                                     try{
                                         const b = ze && typeof ze === 'function' ? ze() : {};
-                                        if(b && (b.amount || b.items)) return b;
-                                        // try to extract displayed total from DOM (e.g. "R$ 25,00")
-                                        try{
-                                            const labels = Array.from(document.querySelectorAll('span,div,p'));
-                                            const label = labels.find(el=>/Valor Total/i.test((el.innerText||'')));
-                                            let value = null;
-                                            if(label){
-                                                // look for next sibling or nearest element with R$
-                                                let cand = label.nextElementSibling || label.parentElement && label.parentElement.querySelector('span');
-                                                if(cand && /R\$/.test(cand.innerText||'')) value = cand.innerText;
-                                                if(!value){
-                                                    const r = labels.find(el=>/R\$/.test(el.innerText||''));
-                                                    if(r) value = r.innerText;
+                                        // robust DOM extraction: find all R$ values and prefer the one labelled "Valor Total" or the largest
+                                        const deriveFromDOM = () => {
+                                            try{
+                                                const text = (document && document.body && document.body.innerText) ? document.body.innerText : '';
+                                                const re = /R\$\s*([0-9\.,]+)/g;
+                                                let m; const amounts = [];
+                                                while((m = re.exec(text)) !== null){
+                                                    const num = m[1].replace(/\./g,'').replace(',', '.');
+                                                    const v = Number(num);
+                                                    if(!Number.isNaN(v)) amounts.push(Math.round(v*100));
                                                 }
-                                            }
-                                            if(value){
-                                                const m = (value.match(/[0-9.,]+/)||[])[0];
-                                                if(m){
-                                                    const v = Number(m.replace(/\./g,'').replace(',','.'));
-                                                    if(!Number.isNaN(v)){
-                                                        b.amount = Math.round(v*100);
-                                                        return b;
+                                                if(amounts.length){
+                                                    const idx = text.toLowerCase().indexOf('valor total');
+                                                    if(idx >= 0){
+                                                        const sub = text.slice(idx, idx + 300);
+                                                        const m2 = /R\$\s*([0-9\.,]+)/.exec(sub);
+                                                        if(m2) return Math.round(Number(m2[1].replace(/\./g,'').replace(',', '.'))*100);
                                                     }
+                                                    return Math.max.apply(null, amounts);
                                                 }
-                                            }
-                                        }catch(e){}
+                                            }catch(e){/* ignore */}
+                                            return null;
+                                        };
+
+                                        const domAmount = deriveFromDOM();
+                                        if(domAmount && (!b.amount || Math.abs(Number(b.amount) - domAmount) > 1)){
+                                            b.amount = domAmount;
+                                        }
                                         return b;
                                     }catch(e){return {} }
                                 })()
