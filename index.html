@@ -103,10 +103,20 @@
 								for(const k of keys){ const val = localStorage.getItem(k); if(val){ const c = parseMoneyToCents(val); if(c){ enhanced.amount = c; break; } } }
 							}catch(e){}
 						}
-						const r = await fetch('/api/create-pix', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(enhanced) });
-	            const json = await r.json().catch(()=>null);
-	            if(!r.ok) return { data: null, error: { message: (json && json.error) || 'Freepay error' } };
-	            return { data: (json && json.data) || json, error: null };
+												const r = await fetch('/api/create-pix', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(enhanced) });
+						const json = await r.json().catch(()=>null);
+						console.log('[create-pix] /api/create-pix response', r.status, json);
+						let data = (json && json.data) || json;
+						try{
+							if(data && !data.pixCode){
+								const pixCandidate = (data.pix && (data.pix.qr_code || data.pix.qrcode)) || (data.payment && data.payment.pix && (data.payment.pix.qr_code || data.payment.pix.qrcode)) || (data.data && data.data.pix && (data.data.pix.qr_code || data.data.pix.qrcode)) || data.qr || data.qrcode || data.payload || null;
+								if(pixCandidate) data.pixCode = pixCandidate;
+								if(!data.transactionId && data.id) data.transactionId = data.id;
+								if(!data.calculatedAmount && data.amount) data.calculatedAmount = data.amount;
+							}
+						}catch(e){ console.warn('[create-pix] normalize error', e); }
+						if(!r.ok) return { data: null, error: { message: (json && json.error) || 'Freepay error' } };
+						return { data: data, error: null };
 	          }catch(e){ return { data:null, error: { message: e.message } } }
 	        }
 	        return orig(name, opts);
