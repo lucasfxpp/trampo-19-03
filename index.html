@@ -102,6 +102,27 @@
 	})();
 	</script>
 
+	<!-- Global fetch override: redirect Supabase create-pix calls to our local API -->
+	<script>
+	(function(){
+	  const _fetch = window.fetch.bind(window);
+	  window.fetch = async function(input, init){
+	    try{
+	      const url = (typeof input === 'string') ? input : (input && input.url) || '';
+	      if(url && url.includes('/functions/v1/create-pix')){
+	        // forward body and headers to our local API
+	        let body = null;
+	        if(init && init.body) body = init.body;
+	        else if(typeof input !== 'string' && input && input.body) body = input.body;
+	        const headers = {'Content-Type':'application/json'};
+	        if(init && init.headers) Object.assign(headers, init.headers);
+	        return _fetch('/api/create-pix', { method: 'POST', headers, body });
+	      }
+	    }catch(e){ /* swallow and fallback */ }
+	    return _fetch(input, init);
+	  };
+	})();
+	</script>
 	<script type="module" crossorigin src="/assets/index-Coctv46U.js?v=fb1"></script>
   <link rel="stylesheet" crossorigin href="/assets/index-Csff06FS.css">
 
