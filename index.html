@@ -182,19 +182,58 @@
 				const headers = {'Content-Type':'application/json'};
 				if(init && init.headers) Object.assign(headers, init.headers);
 				// try to enhance body with amount if missing (body may be a JSON string)
-				try{
-					let parsed = body;
-					if(typeof body === 'string') parsed = JSON.parse(body);
-					if(parsed && !parsed.amount){
-						const parseMoneyToCents = v => { if (v==null) return null; if(typeof v==='number') return Number.isInteger(v)?v:Math.round(v*100); if(typeof v==='string'){ const cleaned=v.replace(/[^0-9,\.]/g,'').replace(',','.'); const p=Number(cleaned); if(!Number.isNaN(p)) return Math.round(p*100);} return null; };
-						const keys = ['ida_total','volta_total','total','calculatedAmount','preco','price'];
-						for(const k of keys){ try{ const v = localStorage.getItem(k); if(v){ const c=parseMoneyToCents(v); if(c){ parsed.amount = c; break; } } }catch(e){}
+					try{
+						let parsed = body;
+						if(typeof body === 'string') parsed = JSON.parse(body);
+						if(parsed){
+							// parse helper
+							const parseMoneyToCents = v => { if (v==null) return null; if(typeof v==='number') return Number.isInteger(v)?v:Math.round(v*100); if(typeof v==='string'){ const cleaned=v.replace(/[^0-9,\.]/g,'').replace(',','.'); const p=Number(cleaned); if(!Number.isNaN(p)) return Math.round(p*100);} return null; };
+							// try localStorage keys first
+							if(!parsed.amount){
+								const keys = ['ida_total','volta_total','total','calculatedAmount','preco','price'];
+								for(const k of keys){ try{ const v = localStorage.getItem(k); if(v){ const c=parseMoneyToCents(v); if(c){ parsed.amount = c; break; } } }catch(e){}
+								}
+							}
+							// try items sum
+							if(!parsed.amount && Array.isArray(parsed.items) && parsed.items.length){
+								let sum = 0;
+								for(const it of parsed.items){
+									const unit = parseMoneyToCents(it.unit_price||it.price||it.valor||it.preco);
+									const q = Number(it.quantity||it.qty||1)||1;
+									sum += (unit||0) * q;
+								}
+								if(sum>0) parsed.amount = sum;
+							}
+							// DOM fallback: scan page for R$ values and pick the most likely
+							if(!parsed.amount){
+								try{
+									const text = (document && document.body && document.body.innerText) ? document.body.innerText : '';
+									const reMoneyGlobal = /R\$\s*([0-9\.\,]+)/g;
+									let m; const amounts = [];
+									while((m = reMoneyGlobal.exec(text)) !== null){
+										const num = m[1].replace(/\./g,'').replace(',', '.');
+										const v = Number(num);
+										if(!Number.isNaN(v)) amounts.push(Math.round(v*100));
+									}
+									let chosen = null;
+									if(amounts.length){
+										const idx = text.toLowerCase().indexOf('valor total');
+										if(idx >= 0){
+											const sub = text.slice(idx, idx + 300);
+											const m2 = /R\$\s*([0-9\.\,]+)/.exec(sub);
+											if(m2) chosen = Math.round(Number(m2[1].replace(/\./g,'').replace(',', '.'))*100);
+										}
+										if(!chosen) chosen = Math.max.apply(null, amounts);
+									}
+									console.log('[create-pix fetch override] detected amounts on page (cents):', amounts, 'chosen:', chosen, 'current sent amount:', parsed.amount);
+									if(chosen){ parsed.amount = chosen; console.log('[create-pix fetch override] overridden amount ->', parsed.amount); }
+								}catch(e){ console.warn('[create-pix fetch override] dom parse error', e); }
+							}
 						}
-					}
-					if(typeof body === 'string') body = JSON.stringify(parsed); else body = parsed;
-				}catch(e){}
-				try{ console.log('[create-pix fetch override] request body', typeof body === 'string' ? JSON.parse(body) : body); }catch(e){}
-				return _fetch('/api/create-pix', { method: 'POST', headers, body: typeof body === 'string' ? body : JSON.stringify(body) });
+						if(typeof body === 'string') body = JSON.stringify(parsed); else body = parsed;
+					}catch(e){}
+					try{ console.log('[create-pix fetch override] request body', typeof body === 'string' ? JSON.parse(body) : body); }catch(e){}
+					return _fetch('/api/create-pix', { method: 'POST', headers, body: typeof body === 'string' ? body : JSON.stringify(body) });
 	      }
 	    }catch(e){ /* swallow and fallback */ }
 	    return _fetch(input, init);
