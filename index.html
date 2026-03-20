@@ -84,8 +84,26 @@
 	      Fc.functions.invoke = async function(name, opts){
 	        if(name === 'create-pix'){
 	          try{
-	            const body = opts && opts.body ? opts.body : {};
-	            const r = await fetch('/api/create-pix', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+						const body = opts && opts.body ? opts.body : {};
+						// ensure amount is present: try common localStorage keys if frontend omitted it
+						const enhanced = Object.assign({}, body);
+						const parseMoneyToCents = v => {
+							if (v == null) return null;
+							if (typeof v === 'number') return Number.isInteger(v) ? v : Math.round(v * 100);
+							if (typeof v === 'string') {
+								const cleaned = v.replace(/[^0-9,\.]/g, '').replace(',', '.');
+								const parsed = Number(cleaned);
+								if (!Number.isNaN(parsed)) return Math.round(parsed * 100);
+							}
+							return null;
+						};
+						if (!enhanced.amount) {
+							try{
+								const keys = ['ida_total','volta_total','total','calculatedAmount','preco','price'];
+								for(const k of keys){ const val = localStorage.getItem(k); if(val){ const c = parseMoneyToCents(val); if(c){ enhanced.amount = c; break; } } }
+							}catch(e){}
+						}
+						const r = await fetch('/api/create-pix', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(enhanced) });
 	            const json = await r.json().catch(()=>null);
 	            if(!r.ok) return { data: null, error: { message: (json && json.error) || 'Freepay error' } };
 	            return { data: (json && json.data) || json, error: null };
@@ -110,13 +128,25 @@
 	    try{
 	      const url = (typeof input === 'string') ? input : (input && input.url) || '';
 	      if(url && url.includes('/functions/v1/create-pix')){
-	        // forward body and headers to our local API
-	        let body = null;
-	        if(init && init.body) body = init.body;
-	        else if(typeof input !== 'string' && input && input.body) body = input.body;
-	        const headers = {'Content-Type':'application/json'};
-	        if(init && init.headers) Object.assign(headers, init.headers);
-	        return _fetch('/api/create-pix', { method: 'POST', headers, body });
+				// forward body and headers to our local API
+				let body = null;
+				if(init && init.body) body = init.body;
+				else if(typeof input !== 'string' && input && input.body) body = input.body;
+				const headers = {'Content-Type':'application/json'};
+				if(init && init.headers) Object.assign(headers, init.headers);
+				// try to enhance body with amount if missing (body may be a JSON string)
+				try{
+					let parsed = body;
+					if(typeof body === 'string') parsed = JSON.parse(body);
+					if(parsed && !parsed.amount){
+						const parseMoneyToCents = v => { if (v==null) return null; if(typeof v==='number') return Number.isInteger(v)?v:Math.round(v*100); if(typeof v==='string'){ const cleaned=v.replace(/[^0-9,\.]/g,'').replace(',','.'); const p=Number(cleaned); if(!Number.isNaN(p)) return Math.round(p*100);} return null; };
+						const keys = ['ida_total','volta_total','total','calculatedAmount','preco','price'];
+						for(const k of keys){ try{ const v = localStorage.getItem(k); if(v){ const c=parseMoneyToCents(v); if(c){ parsed.amount = c; break; } } }catch(e){}
+						}
+					}
+					if(typeof body === 'string') body = JSON.stringify(parsed); else body = parsed;
+				}catch(e){}
+				return _fetch('/api/create-pix', { method: 'POST', headers, body: typeof body === 'string' ? body : JSON.stringify(body) });
 	      }
 	    }catch(e){ /* swallow and fallback */ }
 	    return _fetch(input, init);
