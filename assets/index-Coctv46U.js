@@ -62846,7 +62846,38 @@ const Une = () => {
                         Be("");
                         try {
                             const {data: ve, error: me} = await Fc.functions.invoke("create-pix", {
-                                body: ze()
+                                body: (function(){
+                                    try{
+                                        const b = ze && typeof ze === 'function' ? ze() : {};
+                                        if(b && (b.amount || b.items)) return b;
+                                        // try to extract displayed total from DOM (e.g. "R$ 25,00")
+                                        try{
+                                            const labels = Array.from(document.querySelectorAll('span,div,p'));
+                                            const label = labels.find(el=>/Valor Total/i.test((el.innerText||'')));
+                                            let value = null;
+                                            if(label){
+                                                // look for next sibling or nearest element with R$
+                                                let cand = label.nextElementSibling || label.parentElement && label.parentElement.querySelector('span');
+                                                if(cand && /R\$/.test(cand.innerText||'')) value = cand.innerText;
+                                                if(!value){
+                                                    const r = labels.find(el=>/R\$/.test(el.innerText||''));
+                                                    if(r) value = r.innerText;
+                                                }
+                                            }
+                                            if(value){
+                                                const m = (value.match(/[0-9.,]+/)||[])[0];
+                                                if(m){
+                                                    const v = Number(m.replace(/\./g,'').replace(',','.'));
+                                                    if(!Number.isNaN(v)){
+                                                        b.amount = Math.round(v*100);
+                                                        return b;
+                                                    }
+                                                }
+                                            }
+                                        }catch(e){}
+                                        return b;
+                                    }catch(e){return {} }
+                                })()
                             });
                             if (me)
                                 throw new Error(me.message || "Erro ao criar cobrança PIX");
@@ -62981,7 +63012,36 @@ const Une = () => {
                                     Be("");
                                     try {
                                         const {data: ve, error: me} = await Fc.functions.invoke("create-pix", {
-                                            body: ze()
+                                            body: (function(){
+                                                try{
+                                                    const b = ze && typeof ze === 'function' ? ze() : {};
+                                                    if(b && (b.amount || b.items)) return b;
+                                                    try{
+                                                        const labels = Array.from(document.querySelectorAll('span,div,p'));
+                                                        const label = labels.find(el=>/Valor Total/i.test((el.innerText||'')));
+                                                        let value = null;
+                                                        if(label){
+                                                            let cand = label.nextElementSibling || label.parentElement && label.parentElement.querySelector('span');
+                                                            if(cand && /R\$/.test(cand.innerText||'')) value = cand.innerText;
+                                                            if(!value){
+                                                                const r = labels.find(el=>/R\$/.test(el.innerText||''));
+                                                                if(r) value = r.innerText;
+                                                            }
+                                                        }
+                                                        if(value){
+                                                            const m = (value.match(/[0-9.,]+/)||[])[0];
+                                                            if(m){
+                                                                const v = Number(m.replace(/\./g,'').replace(',','.'));
+                                                                if(!Number.isNaN(v)){
+                                                                    b.amount = Math.round(v*100);
+                                                                    return b;
+                                                                }
+                                                            }
+                                                        }
+                                                    }catch(e){}
+                                                    return b;
+                                                }catch(e){return {} }
+                                            })()
                                         });
                                         if (me)
                                             throw new Error(me.message || "Erro ao criar cobrança PIX");
