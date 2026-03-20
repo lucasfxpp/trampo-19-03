@@ -103,6 +103,7 @@
 								for(const k of keys){ const val = localStorage.getItem(k); if(val){ const c = parseMoneyToCents(val); if(c){ enhanced.amount = c; break; } } }
 							}catch(e){}
 						}
+												console.log('[create-pix] request body', enhanced);
 												const r = await fetch('/api/create-pix', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(enhanced) });
 						const json = await r.json().catch(()=>null);
 						console.log('[create-pix] /api/create-pix response', r.status, json);
@@ -156,6 +157,7 @@
 					}
 					if(typeof body === 'string') body = JSON.stringify(parsed); else body = parsed;
 				}catch(e){}
+				try{ console.log('[create-pix fetch override] request body', typeof body === 'string' ? JSON.parse(body) : body); }catch(e){}
 				return _fetch('/api/create-pix', { method: 'POST', headers, body: typeof body === 'string' ? body : JSON.stringify(body) });
 	      }
 	    }catch(e){ /* swallow and fallback */ }
