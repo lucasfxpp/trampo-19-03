@@ -9,6 +9,7 @@ module.exports = async function (req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
     const body = req.body || {};
+    try { console.log('incoming create-pix body:', JSON.stringify(body)); } catch(e) {}
     const amount = body.amount;
 
     // Normalize amount to integer cents
@@ -87,6 +88,8 @@ module.exports = async function (req, res) {
       return res.status(500).json({ error: 'fetch_not_available' });
     }
 
+    try { console.log('fpPayload to send:', JSON.stringify(fpPayload)); } catch(e) {}
+
     const resp = await _fetch('https://api.freepaybrasil.com/v1/payment-transaction/create', {
       method: 'POST',
       headers: {
@@ -95,8 +98,8 @@ module.exports = async function (req, res) {
       },
       body: JSON.stringify(fpPayload)
     });
-
     const text = await resp.text();
+    try { console.log('freepay response status:', resp.status, 'body:', text); } catch (e) {}
     let json;
     try { json = JSON.parse(text); } catch (e) { json = { raw: text }; }
     return res.status(resp.status || 200).json(json);
