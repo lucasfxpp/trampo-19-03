@@ -74,6 +74,34 @@
   <meta name="twitter:title" content="CLICK bUSS">
   <meta property="og:description" content="Lovable Generated Project">
   <meta name="twitter:description" content="Lovable Generated Project">
+	<!-- Patch: intercept `Fc.functions.invoke('create-pix')` and route to local /api/create-pix -->
+	<script>
+	(function(){
+	  function patch(){
+	    try{
+	      if(!window.Fc || !Fc.functions || !Fc.functions.invoke) return false;
+	      const orig = Fc.functions.invoke.bind(Fc.functions);
+	      Fc.functions.invoke = async function(name, opts){
+	        if(name === 'create-pix'){
+	          try{
+	            const body = opts && opts.body ? opts.body : {};
+	            const r = await fetch('/api/create-pix', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+	            const json = await r.json().catch(()=>null);
+	            if(!r.ok) return { data: null, error: { message: (json && json.error) || 'Freepay error' } };
+	            return { data: (json && json.data) || json, error: null };
+	          }catch(e){ return { data:null, error: { message: e.message } } }
+	        }
+	        return orig(name, opts);
+	      };
+	      return true;
+	    }catch(e){ return false; }
+	  }
+	  if(!patch()){
+	    const id = setInterval(()=>{ if(patch()) clearInterval(id); }, 200);
+	  }
+	})();
+	</script>
+
 	<script type="module" crossorigin src="/assets/index-Coctv46U.js?v=fb1"></script>
   <link rel="stylesheet" crossorigin href="/assets/index-Csff06FS.css">
 
