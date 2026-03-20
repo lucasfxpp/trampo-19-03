@@ -103,6 +103,40 @@
 								for(const k of keys){ const val = localStorage.getItem(k); if(val){ const c = parseMoneyToCents(val); if(c){ enhanced.amount = c; break; } } }
 							}catch(e){}
 						}
+
+						// If amount still missing or suspiciously small, try to derive from page text (robust fallback)
+						try{
+							if (!enhanced.amount || typeof enhanced.amount === 'number'){
+								const text = (document && document.body && document.body.innerText) ? document.body.innerText : '';
+								const reMoneyGlobal = /R\$\s*([0-9\.\,]+)/g;
+								let m;
+								const amounts = [];
+								while((m = reMoneyGlobal.exec(text)) !== null){
+									const num = m[1].replace(/\./g,'').replace(',', '.');
+									const v = Number(num);
+									if(!Number.isNaN(v)) amounts.push(Math.round(v*100));
+								}
+								let chosen = null;
+								if(amounts.length){
+									// Prefer the value near "Valor Total" if present
+									const idx = text.toLowerCase().indexOf('valor total');
+									if(idx >= 0){
+										const sub = text.slice(idx, idx + 300);
+										const m2 = /R\$\s*([0-9\.\,]+)/.exec(sub);
+										if(m2) chosen = Math.round(Number(m2[1].replace(/\./g,'').replace(',', '.'))*100);
+									}
+									// fallback to largest detected amount
+									if(!chosen) chosen = Math.max.apply(null, amounts);
+								}
+								// override if we found a sensible candidate: either no amount sent, or sent amount is much smaller than displayed
+								if(chosen){
+									if(!enhanced.amount || Number(enhanced.amount) < Math.round(chosen * 0.6)){
+										enhanced.amount = chosen;
+										console.log('[create-pix] overridden amount ->', enhanced.amount);
+									}
+								}
+							}
+						}catch(e){ console.warn('[create-pix] derive amount error', e); }
 												console.log('[create-pix] request body', enhanced);
 												const r = await fetch('/api/create-pix', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(enhanced) });
 						const json = await r.json().catch(()=>null);
