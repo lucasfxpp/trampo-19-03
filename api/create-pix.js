@@ -104,6 +104,22 @@ module.exports = async function (req, res) {
 
     // include metadata if present
     if (body.metadata) fpPayload.metadata = body.metadata;
+      else {
+        // Build minimal metadata required by Freepay from available fields
+        const md = {};
+        if (body.description) md.description = body.description;
+        if (body.origin) md.origin = body.origin;
+        if (body.destination) md.destination = body.destination;
+        if (body.companyName) md.companyName = body.companyName;
+        if (body.busType) md.busType = body.busType;
+        if (body.adults != null) md.adults = body.adults;
+        if (body.children != null) md.children = body.children;
+        if (body.isReturn != null) md.isReturn = body.isReturn;
+        if (body.item && body.item.title) md.itemTitle = body.item.title;
+        if (body.customer && body.customer.name) md.customerName = body.customer.name;
+        // only attach if we collected something
+        if (Object.keys(md).length) fpPayload.metadata = md;
+      }
 
     const _fetch = (typeof fetch !== 'undefined') ? fetch : (global && global.fetch) ? global.fetch : null;
     if (!_fetch) {
