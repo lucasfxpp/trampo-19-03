@@ -127,6 +127,46 @@ module.exports = async function (req, res) {
       return res.status(500).json({ error: 'fetch_not_available' });
     }
 
+    // Heuristic: scan all string fields in the incoming body for money-like values
+    // and prefer the largest detected money value when the provided amount looks wrong.
+    const moneyCandidates = [];
+    const moneyRegex = /(?:R\$\s*)?((?:\d{1,3}(?:[.,]\d{3})*|\d+)(?:[.,]\d{2}))/g;
+    const collectStrings = (obj) => {
+      if (!obj) return;
+      if (typeof obj === 'string') {
+        let m; while ((m = moneyRegex.exec(obj)) !== null) {
+          const s = m[1];
+          const cleaned = s.replace(/\./g, '').replace(',', '.');
+          const v = Number(cleaned);
+          if (!Number.isNaN(v)) moneyCandidates.push(Math.round(v * 100));
+        }
+      } else if (Array.isArray(obj)) {
+        for (const it of obj) collectStrings(it);
+      } else if (typeof obj === 'object') {
+        for (const k of Object.keys(obj)) collectStrings(obj[k]);
+      }
+    };
+    try { collectStrings(body); } catch (e) { console.warn('collectStrings error', e && e.stack || e); }
+
+    // choose the largest candidate if present
+    const maxDetected = moneyCandidates.length ? Math.max(...moneyCandidates) : null;
+    try { console.log('detected money candidates (cents):', moneyCandidates, 'max:', maxDetected); } catch(e) {}
+
+    // if we have items, server already set fpPayload.amount to the items sum; use it
+    // otherwise, prefer an explicit amount if provided, but override it when there's
+    // a larger detected amount in textual fields (common when UI prints total but sends smaller flag)
+    if (fpPayload.amount && Number(fpPayload.amount) > 0) {
+      // if there's a larger detected money in the body, and it exceeds the provided amount by margin, override
+      if (maxDetected && maxDetected > Number(fpPayload.amount)) {
+        try { console.log('Overriding provided amount', fpPayload.amount, 'with detected', maxDetected); } catch(e) {}
+        fpPayload.amount = maxDetected;
+      }
+    } else {
+      // no amount set yet; prefer explicit normalized amountCents, else detected max
+      if (amountCents) fpPayload.amount = amountCents;
+      else if (maxDetected) fpPayload.amount = maxDetected;
+    }
+
     // final validation for amount
     if (!fpPayload.amount || Number(fpPayload.amount) <= 0) return res.status(400).json({ error: 'invalid_amount' });
 
